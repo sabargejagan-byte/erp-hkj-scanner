@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ERP HKJ — Live Barcode Scanner</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;background:#05070b;color:#fff;font-family:Arial,sans-serif;height:100%;overflow:hidden}.app{height:100dvh;display:flex;flex-direction:column}.top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:#10151d;font-weight:800}.title{font-size:18px}.close{border:0;background:#26303d;color:#fff;border-radius:12px;padding:12px 15px;font-size:16px}.stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}.stage video{width:100%;height:100%;object-fit:cover}.guide{position:absolute;width:min(82vw,420px);height:180px;border:3px solid #fff;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}.guide:after{content:"";position:absolute;left:7%;right:7%;top:50%;height:2px;background:#ff3b30}.status{position:absolute;left:18px;right:18px;bottom:22px;padding:14px;border-radius:14px;background:rgba(0,0,0,.68);text-align:center;font-size:15px}.bottom{padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:#10151d}.manual{display:flex;gap:8px}.manual input{flex:1;min-width:0;border:1px solid #475569;background:#1b2430;color:#fff;border-radius:12px;padding:14px;font-size:16px}.manual button{border:0;border-radius:12px;padding:0 16px;font-weight:800}.error{color:#fecaca}.ok{color:#bbf7d0}.hidden{display:none!important}</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="title">📷 ERP HKJ — Scan Barcode</div><button class="close" id="back">Tutup</button></div>
+  <div class="stage">
+    <video id="video" playsinline autoplay muted></video>
+    <div class="guide"></div>
+    <div id="status" class="status">Meminta akses kamera...</div>
+  </div>
+  <div class="bottom">
+    <div class="manual"><input id="manual" placeholder="Ketik barcode jika perlu"><button id="send">Kirim</button></div>
+  </div>
+</div>
+<script>
+(function(){
+  const q=new URLSearchParams(location.search);
+  const returnUrl=q.get('returnUrl');
+  const video=document.getElementById('video');
+  const status=document.getElementById('status');
+  let stream=null, detector=null, busy=false, stopped=false;
+  function setStatus(t,c){status.textContent=t;status.className='status '+(c||'')}
+  function go(value){
+    value=(value||'').trim();
+    if(!value||busy)return; busy=true; stopped=true;
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+    if(!returnUrl){setStatus('Barcode terbaca: '+value+' — returnUrl belum ada.','ok');return;}
+    let u; try{u=new URL(returnUrl);}catch(e){setStatus('returnUrl tidak valid.','error');return;}
+    u.searchParams.set('opnameBarcode',value);
+    location.href=u.toString();
+  }
+  async function scan(){
+    if(stopped)return;
+    try{
+      const codes=await detector.detect(video);
+      if(codes&&codes.length){const v=(codes[0].rawValue||'').trim();if(v){setStatus('Barcode terbaca: '+v,'ok');go(v);return;}}
+    }catch(e){}
+    requestAnimationFrame(scan);
+  }
+  async function start(){
+    if(!returnUrl){setStatus('Scanner dibuka tanpa returnUrl.','error');return;}
+    if(!('BarcodeDetector' in window)){setStatus('Browser tidak mendukung BarcodeDetector. Gunakan input manual di bawah.','error');return;}
+    try{
+      detector=new BarcodeDetector({formats:['code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code']});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      video.srcObject=stream; await video.play();
+      setStatus('Arahkan barcode ke kotak. Scanner membaca otomatis.');
+      requestAnimationFrame(scan);
+    }catch(e){setStatus('Kamera ditolak / tidak tersedia. Gunakan input barcode di bawah.','error');}
+  }
+  document.getElementById('send').onclick=()=>go(document.getElementById('manual').value);
+  document.getElementById('manual').addEventListener('keydown',e=>{if(e.key==='Enter')go(e.target.value)});
+  document.getElementById('back').onclick=()=>{if(returnUrl)location.href=returnUrl;else history.back()};
+  start();
+})();
+</script>
+</body>
+</html>
