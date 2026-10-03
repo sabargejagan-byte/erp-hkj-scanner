@@ -45,7 +45,6 @@
     requestAnimationFrame(scan);
   }
   async function start(){
-    if(!returnUrl){setStatus('Scanner dibuka tanpa returnUrl.','error');return;}
     if(!('BarcodeDetector' in window)){setStatus('Browser tidak mendukung BarcodeDetector. Gunakan input manual di bawah.','error');return;}
     try{
       detector=new BarcodeDetector({formats:['code_128','code_39','ean_13','ean_8','upc_a','upc_e','qr_code']});
