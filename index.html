@@ -23,7 +23,7 @@
 (function(){
   const q=new URLSearchParams(location.search);
   const returnUrl=q.get('returnUrl');
-  const ERP_ORIGIN='https://script.google.com';
+  const ERP_ORIGIN=q.get('erpOrigin')||'*';
   const video=document.getElementById('video');
   const status=document.getElementById('status');
   let stream=null, detector=null, busy=false, stopped=false;
