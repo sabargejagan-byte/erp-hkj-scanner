@@ -23,6 +23,7 @@
 (function(){
   const q=new URLSearchParams(location.search);
   const returnUrl=q.get('returnUrl');
+  const ERP_ORIGIN='https://script.google.com';
   const video=document.getElementById('video');
   const status=document.getElementById('status');
   let stream=null, detector=null, busy=false, stopped=false;
@@ -31,10 +32,16 @@
     value=(value||'').trim();
     if(!value||busy)return; busy=true; stopped=true;
     if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-    if(!returnUrl){setStatus('Barcode terbaca: '+value+' — returnUrl belum ada.','ok');return;}
-    let u; try{u=new URL(returnUrl);}catch(e){setStatus('returnUrl tidak valid.','error');return;}
-    u.searchParams.set('opnameBarcode',value);
-    location.href=u.toString();
+    if(window.opener && !window.opener.closed){
+      try{
+        window.opener.postMessage({type:'ERP_HKJ_OPNAME_BARCODE',barcode:value},ERP_ORIGIN);
+        setStatus('Barcode terkirim ke ERP: '+value,'ok');
+        setTimeout(function(){window.close();},350);
+        return;
+      }catch(e){}
+    }
+    if(!returnUrl){setStatus('Barcode terbaca: '+value+' — ERP belum terhubung.','ok');return;}
+    setStatus('Barcode terbaca: '+value+' — scanner dibuka langsung.','ok');
   }
   async function scan(){
     if(stopped)return;
@@ -56,7 +63,7 @@
   }
   document.getElementById('send').onclick=()=>go(document.getElementById('manual').value);
   document.getElementById('manual').addEventListener('keydown',e=>{if(e.key==='Enter')go(e.target.value)});
-  document.getElementById('back').onclick=()=>{if(returnUrl)location.href=returnUrl;else history.back()};
+  document.getElementById('back').onclick=()=>{if(window.opener&&!window.opener.closed){window.close();}else if(returnUrl)location.href=returnUrl;else history.back()};
   start();
 })();
 </script>
